@@ -1,0 +1,13 @@
+{
+  "name": "neuroscan-alzheimer-ai",
+  "version": "1.0.0",
+  "description": "Alzheimer's MRI Classification using DenseNet-121",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "license": "MIT"
+}

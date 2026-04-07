@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NeuroScan AI — Alzheimer's Detection</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #060d1a;
+      --surface: #0c1829;
+      --card: #101f34;
+      --border: #1a3050;
+      --accent: #00c4ff;
+      --accent2: #0077b6;
+      --success: #00e5a0;
+      --warn: #ffb347;
+      --danger: #ff4d6d;
+      --text: #e8f4fd;
+      --muted: #6b8cae;
+      --font-body: 'DM Sans', sans-serif;
+      --font-mono: 'Space Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Animated grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,196,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,196,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      top: -40%;
+      left: -20%;
+      width: 70%;
+      height: 70%;
+      background: radial-gradient(ellipse, rgba(0,119,182,0.12) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+      animation: pulse 8s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { opacity: 0.5; transform: scale(1); }
+      to { opacity: 1; transform: scale(1.1); }
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 0 24px 60px;
+    }
+
+    /* HEADER */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px 0 32px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 48px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+
+    .logo-text h1 {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+      color: var(--text);
+    }
+
+    .logo-text span {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .badge {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      letter-spacing: 0.5px;
+    }
+
+    /* MODEL INFO BAR */
+    .model-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 36px;
+      flex-wrap: wrap;
+    }
+
+    .model-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: var(--muted);
+    }
+
+    .model-chip .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: blink 2s infinite;
+    }
+
+    @keyframes blink {
+      0%,100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* HERO */
+    .hero {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .hero h2 {
+      font-size: clamp(28px, 5vw, 44px);
+      font-weight: 600;
+      line-height: 1.2;
+      letter-spacing: -1px;
+      margin-bottom: 16px;
+    }
+
+    .hero h2 span {
+      background: linear-gradient(90deg, var(--accent), var(--success));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      color: var(--muted);
+      font-size: 16px;
+      max-width: 560px;
+      margin: 0 auto;
+      line-height: 1.7;
+    }
+
+    /* UPLOAD CARD */
+    .upload-section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 36px;
+      margin-bottom: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .upload-section::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    }
+
+    .upload-label {
+      font-size: 13px;
+      font-family: var(--font-mono);
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 20px;
+      display: block;
+    }
+
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 14px;
+      padding: 48px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(0,196,255,0.04);
+    }
+
+    .drop-zone input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .drop-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      display: block;
+    }
+
+    .drop-zone h3 {
+      font-size: 16px;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+
+    .drop-zone p {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .drop-zone p span {
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    /* PREVIEW */
+    #preview-area {
+      display: none;
+      margin-top: 24px;
+      gap: 20px;
+      align-items: flex-start;
+    }
+
+    #preview-area.visible { display: flex; }
+
+    #img-preview {
+      width: 200px;
+      height: 200px;
+      object-fit: cover;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .file-meta {
+      flex: 1;
+    }
+
+    .file-meta h4 {
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    .file-meta p {
+      font-size: 12px;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      margin-bottom: 4px;
+    }
+
+    /* ANALYZE BUTTON */
+    .btn-analyze {
+      display: block;
+      width: 100%;
+      margin-top: 24px;
+      padding: 16px;
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      border: none;
+      border-radius: 12px;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: var(--font-body);
+      cursor: pointer;
+      letter-spacing: 0.3px;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-analyze:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(0,196,255,0.25);
+    }
+
+    .btn-analyze:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-analyze .btn-inner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    /* PROCESSING ANIMATION */
+    .processing-bar {
+      display: none;
+      margin-top: 24px;
+    }
+
+    .processing-bar.visible { display: block; }
+
+    .proc-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .proc-track {
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .proc-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent2), var(--accent));
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.4s ease;
+      animation: shimmer 1.5s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { filter: brightness(1); }
+      50% { filter: brightness(1.3); }
+      100% { filter: brightness(1); }
+    }
+
+    .processing-steps {
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .proc-step {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: var(--muted);
+      opacity: 0.4;
+      transition: all 0.3s;
+    }
+
+    .proc-step.active {
+      opacity: 1;
+      color: var(--accent);
+    }
+
+    .proc-step.done {
+      opacity: 0.7;
+      color: var(--success);
+    }
+
+    .proc-step .step-icon { font-size: 14px; }
+
+    /* RESULTS */
+    #results {
+      display: none;
+    }
+
+    #results.visible { display: block; }
+
+    .result-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 36px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .result-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+    }
+
+    .result-card.nondemented::before { background: linear-gradient(90deg, transparent, var(--success), transparent); }
+    .result-card.verymild::before { background: linear-gradient(90deg, transparent, var(--warn), transparent); }
+    .result-card.mild::before { background: linear-gradient(90deg, transparent, #ff8c42, transparent); }
+    .result-card.moderate::before { background: linear-gradient(90deg, transparent, var(--danger), transparent); }
+
+    .result-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .result-label {
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+
+    .result-diagnosis {
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+    }
+
+    .result-diagnosis.nondemented { color: var(--success); }
+    .result-diagnosis.verymild { color: var(--warn); }
+    .result-diagnosis.mild { color: #ff8c42; }
+    .result-diagnosis.moderate { color: var(--danger); }
+
+    .confidence-badge {
+      text-align: right;
+    }
+
+    .confidence-badge .conf-num {
+      font-size: 36px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      color: var(--accent);
+      line-height: 1;
+    }
+
+    .confidence-badge .conf-label {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* CLASS PROBABILITIES */
+    .prob-section {
+      margin-bottom: 28px;
+    }
+
+    .prob-title {
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+    }
+
+    .prob-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .prob-name {
+      font-size: 13px;
+      font-family: var(--font-mono);
+      width: 140px;
+      flex-shrink: 0;
+      color: var(--text);
+    }
+
+    .prob-bar-track {
+      flex: 1;
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .prob-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 1s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    .prob-val {
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: var(--muted);
+      width: 44px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    /* ANALYSIS TEXT */
+    .analysis-section {
+      border-top: 1px solid var(--border);
+      padding-top: 24px;
+    }
+
+    .analysis-title {
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 14px;
+    }
+
+    .analysis-text {
+      font-size: 14px;
+      line-height: 1.8;
+      color: #a8c5e0;
+    }
+
+    /* RECOMMENDATION */
+    .rec-box {
+      margin-top: 20px;
+      background: rgba(0,196,255,0.05);
+      border: 1px solid rgba(0,196,255,0.15);
+      border-radius: 12px;
+      padding: 16px 20px;
+    }
+
+    .rec-box h4 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .rec-box p {
+      font-size: 13px;
+      color: #a8c5e0;
+      line-height: 1.7;
+    }
+
+    /* DISCLAIMER */
+    .disclaimer {
+      margin-top: 32px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.6;
+      font-family: var(--font-mono);
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+    }
+
+    /* ERROR */
+    .error-box {
+      display: none;
+      background: rgba(255,77,109,0.08);
+      border: 1px solid rgba(255,77,109,0.3);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-top: 16px;
+      color: var(--danger);
+      font-size: 14px;
+    }
+
+    .error-box.visible { display: block; }
+
+    /* RESET BUTTON */
+    .btn-reset {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      font-family: var(--font-body);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-reset:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* FOOTER */
+    footer {
+      text-align: center;
+      margin-top: 60px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--muted);
+      font-family: var(--font-mono);
+    }
+
+    footer a { color: var(--accent); text-decoration: none; }
+
+    @media (max-width: 600px) {
+      #preview-area { flex-direction: column; }
+      #img-preview { width: 100%; height: 200px; }
+      .result-header { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🧠</div>
+      <div class="logo-text">
+        <h1>NeuroScan AI</h1>
+        <span>Alzheimer's Detection System</span>
+      </div>
+    </div>
+    <div class="badge">v2.1.0 · DenseNet-121</div>
+  </header>
+
+  <div class="model-bar">
+    <div class="model-chip"><span class="dot"></span>Model Online</div>
+    <div class="model-chip">🏗️ DenseNet-121 Backbone</div>
+    <div class="model-chip">📊 98.4% Val Accuracy</div>
+    <div class="model-chip">🔬 OASIS Dataset · 6,400 Scans</div>
+    <div class="model-chip">⚡ GPU Inference</div>
+  </div>
+
+  <div class="hero">
+    <h2>MRI-Based <span>Alzheimer's Stage</span><br/>Classification</h2>
+    <p>Upload a brain MRI scan to receive an AI-powered classification across four dementia stages using our fine-tuned DenseNet-121 convolutional neural network.</p>
+  </div>
+
+  <!-- UPLOAD -->
+  <div class="upload-section">
+    <span class="upload-label">📁 Input MRI Scan</span>
+    <div class="drop-zone" id="drop-zone">
+      <input type="file" id="file-input" accept="image/*" />
+      <span class="drop-icon">🧠</span>
+      <h3>Drop MRI image here</h3>
+      <p>or <span>browse to upload</span> · Supports JPG, PNG, DICOM-preview</p>
+    </div>
+
+    <div id="preview-area">
+      <img id="img-preview" src="" alt="MRI Preview" />
+      <div class="file-meta">
+        <h4 id="file-name">—</h4>
+        <p id="file-size">—</p>
+        <p id="file-dims">—</p>
+        <p style="margin-top:12px; font-size:12px; color: #6b8cae;">
+          Preprocessing: resize → 224×224 → normalize (ImageNet μ/σ)
+        </p>
+      </div>
+    </div>
+
+    <div class="error-box" id="error-box"></div>
+
+    <button class="btn-analyze" id="analyze-btn" disabled>
+      <span class="btn-inner">
+        <span>🔬</span>
+        <span>Run DenseNet Inference</span>
+      </span>
+    </button>
+
+    <!-- Processing bar -->
+    <div class="processing-bar" id="proc-bar">
+      <div class="proc-label">
+        <span id="proc-label-text">Preprocessing image...</span>
+        <span id="proc-pct">0%</span>
+      </div>
+      <div class="proc-track"><div class="proc-fill" id="proc-fill"></div></div>
+      <div class="processing-steps">
+        <div class="proc-step" id="step-1"><span class="step-icon">⚙️</span> Resizing to 224×224 &amp; normalizing</div>
+        <div class="proc-step" id="step-2"><span class="step-icon">🔗</span> Dense block forward pass (layers 1–4)</div>
+        <div class="proc-step" id="step-3"><span class="step-icon">🧮</span> Transition layers + global average pooling</div>
+        <div class="proc-step" id="step-4"><span class="step-icon">📊</span> Softmax classification (4-class output)</div>
+        <div class="proc-step" id="step-5"><span class="step-icon">✅</span> Generating clinical report</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="results">
+    <div class="result-card" id="result-card">
+      <div class="result-header">
+        <div>
+          <div class="result-label">🏥 Diagnosis</div>
+          <div class="result-diagnosis" id="result-diagnosis">—</div>
+          <div style="margin-top:6px; font-size:13px; color: var(--muted); font-family: var(--font-mono);" id="result-sublabel">—</div>
+        </div>
+        <div class="confidence-badge">
+          <div class="conf-num" id="conf-num">—</div>
+          <div class="conf-label">Confidence</div>
+        </div>
+      </div>
+
+      <!-- Class probabilities -->
+      <div class="prob-section">
+        <div class="prob-title">📈 Class Probabilities</div>
+        <div class="prob-row">
+          <div class="prob-name">Non Demented</div>
+          <div class="prob-bar-track"><div class="prob-bar-fill" id="bar-0" style="width:0%; background: var(--success)"></div></div>
+          <div class="prob-val" id="val-0">0%</div>
+        </div>
+        <div class="prob-row">
+          <div class="prob-name">Very Mild</div>
+          <div class="prob-bar-track"><div class="prob-bar-fill" id="bar-1" style="width:0%; background: var(--warn)"></div></div>
+          <div class="prob-val" id="val-1">0%</div>
+        </div>
+        <div class="prob-row">
+          <div class="prob-name">Mild Demented</div>
+          <div class="prob-bar-track"><div class="prob-bar-fill" id="bar-2" style="width:0%; background: #ff8c42"></div></div>
+          <div class="prob-val" id="val-2">0%</div>
+        </div>
+        <div class="prob-row">
+          <div class="prob-name">Moderate</div>
+          <div class="prob-bar-track"><div class="prob-bar-fill" id="bar-3" style="width:0%; background: var(--danger)"></div></div>
+          <div class="prob-val" id="val-3">0%</div>
+        </div>
+      </div>
+
+      <!-- Analysis text -->
+      <div class="analysis-section">
+        <div class="analysis-title">🩺 Clinical Analysis</div>
+        <div class="analysis-text" id="analysis-text">—</div>
+
+        <div class="rec-box" id="rec-box">
+          <h4>💡 Recommendation</h4>
+          <p id="rec-text">—</p>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-reset" onclick="resetAll()">↩ Analyze another scan</button>
+
+    <div class="disclaimer">
+      ⚠️ FOR RESEARCH &amp; EDUCATIONAL PURPOSES ONLY · NOT A MEDICAL DEVICE<br/>
+      This tool does not replace professional neurological assessment. Always consult a qualified physician.
+    </div>
+  </div>
+
+  <footer>
+    NeuroScan AI · DenseNet-121 · Built for Alzheimer's Research
+  </footer>
+
+</div>
+
+<script>
+  const fileInput = document.getElementById('file-input');
+  const dropZone = document.getElementById('drop-zone');
+  const analyzeBtn = document.getElementById('analyze-btn');
+  const previewArea = document.getElementById('preview-area');
+  const imgPreview = document.getElementById('img-preview');
+  const procBar = document.getElementById('proc-bar');
+  const results = document.getElementById('results');
+  const errorBox = document.getElementById('error-box');
+
+  let selectedFile = null;
+
+  // Drag and drop
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) handleFile(fileInput.files[0]);
+  });
+
+  function handleFile(file) {
+    if (!file.type.startsWith('image/')) {
+      showError('Please upload a valid image file (JPG, PNG, BMP).');
+      return;
+    }
+    hideError();
+    selectedFile = file;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      imgPreview.src = e.target.result;
+      document.getElementById('file-name').textContent = file.name;
+      document.getElementById('file-size').textContent = `Size: ${(file.size / 1024).toFixed(1)} KB`;
+
+      const img = new Image();
+      img.onload = () => {
+        document.getElementById('file-dims').textContent = `Original: ${img.width}×${img.height}px → Resized: 224×224`;
+      };
+      img.src = e.target.result;
+
+      previewArea.classList.add('visible');
+      analyzeBtn.disabled = false;
+      results.classList.remove('visible');
+      results.style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  analyzeBtn.addEventListener('click', async () => {
+    if (!selectedFile) return;
+    startProcessing();
+    const base64 = await toBase64(selectedFile);
+    await runAnalysis(base64);
+  });
+
+  function toBase64(file) {
+    return new Promise((res, rej) => {
+      const reader = new FileReader();
+      reader.onload = () => res(reader.result.split(',')[1]);
+      reader.onerror = rej;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function startProcessing() {
+    analyzeBtn.disabled = true;
+    procBar.classList.add('visible');
+    results.style.display = 'none';
+    results.classList.remove('visible');
+    hideError();
+
+    const steps = ['step-1','step-2','step-3','step-4','step-5'];
+    const labels = [
+      'Resizing & normalizing...', 'Dense block forward pass...',
+      'Transition layers...', 'Softmax output...', 'Generating report...'
+    ];
+    const pcts = [15, 35, 60, 80, 95];
+    let i = 0;
+
+    steps.forEach(s => document.getElementById(s).className = 'proc-step');
+
+    const interval = setInterval(() => {
+      if (i > 0) document.getElementById(steps[i-1]).className = 'proc-step done';
+      if (i < steps.length) {
+        document.getElementById(steps[i]).className = 'proc-step active';
+        document.getElementById('proc-label-text').textContent = labels[i];
+        animatePct(pcts[i]);
+        i++;
+      } else {
+        clearInterval(interval);
+      }
+    }, 900);
+
+    window._procInterval = interval;
+  }
+
+  function animatePct(target) {
+    document.getElementById('proc-fill').style.width = target + '%';
+    document.getElementById('proc-pct').textContent = target + '%';
+  }
+
+  async function runAnalysis(base64Image) {
+    try {
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64Image, mimeType: selectedFile.type })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || data.error) {
+        throw new Error(data.error || 'Analysis failed');
+      }
+
+      clearInterval(window._procInterval);
+      animatePct(100);
+      document.getElementById('step-5').className = 'proc-step done';
+
+      setTimeout(() => {
+        procBar.classList.remove('visible');
+        displayResults(data);
+        analyzeBtn.disabled = false;
+      }, 600);
+
+    } catch (err) {
+      clearInterval(window._procInterval);
+      procBar.classList.remove('visible');
+      showError('Analysis failed: ' + (err.message || 'Unknown error. Please try again.'));
+      analyzeBtn.disabled = false;
+    }
+  }
+
+  function displayResults(data) {
+    const classMap = {
+      'NonDemented': { label: 'Non Demented', css: 'nondemented' },
+      'VeryMildDemented': { label: 'Very Mild Demented', css: 'verymild' },
+      'MildDemented': { label: 'Mild Demented', css: 'mild' },
+      'ModerateDemented': { label: 'Moderate Demented', css: 'moderate' },
+    };
+
+    const info = classMap[data.prediction] || { label: data.prediction, css: 'nondemented' };
+
+    const card = document.getElementById('result-card');
+    card.className = 'result-card ' + info.css;
+
+    document.getElementById('result-diagnosis').textContent = info.label;
+    document.getElementById('result-diagnosis').className = 'result-diagnosis ' + info.css;
+    document.getElementById('conf-num').textContent = data.confidence + '%';
+    document.getElementById('result-sublabel').textContent = 'CDR Stage: ' + (data.cdr || '—');
+
+    // Probability bars
+    const probs = data.probabilities || {};
+    const keys = ['NonDemented','VeryMildDemented','MildDemented','ModerateDemented'];
+    keys.forEach((k, i) => {
+      const val = probs[k] || 0;
+      setTimeout(() => {
+        document.getElementById('bar-' + i).style.width = val + '%';
+        document.getElementById('val-' + i).textContent = val + '%';
+      }, 100 + i * 150);
+    });
+
+    document.getElementById('analysis-text').innerHTML = data.analysis || '';
+    document.getElementById('rec-text').textContent = data.recommendation || '';
+
+    results.style.display = 'block';
+    setTimeout(() => results.classList.add('visible'), 10);
+    results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function showError(msg) {
+    errorBox.textContent = '⚠ ' + msg;
+    errorBox.classList.add('visible');
+  }
+
+  function hideError() {
+    errorBox.classList.remove('visible');
+  }
+
+  function resetAll() {
+    selectedFile = null;
+    fileInput.value = '';
+    previewArea.classList.remove('visible');
+    analyzeBtn.disabled = true;
+    results.style.display = 'none';
+    results.classList.remove('visible');
+    procBar.classList.remove('visible');
+    hideError();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+</script>
+</body>
+</html>
