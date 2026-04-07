@@ -21,7 +21,8 @@ Analyze the brain MRI image and classify it into ONE of:
 - MildDemented
 - ModerateDemented
 
-Respond ONLY in raw valid JSON (no markdown, no code fences, no extra text):
+You MUST respond with ONLY a raw JSON object. No thinking. No explanation. No markdown. No code fences. Just the JSON object starting with { and ending with }.
+
 {
   "prediction": "<class name exactly as above>",
   "confidence": <integer 70-99>,
@@ -31,16 +32,16 @@ Respond ONLY in raw valid JSON (no markdown, no code fences, no extra text):
     "MildDemented": <integer>,
     "ModerateDemented": <integer>
   },
-  "analysis": "<2-3 sentence radiologist-style analysis of hippocampal volume, cortical thickness, ventricle size>",
-  "recommendation": "<1-2 sentence follow-up recommendation>"
+  "analysis": "<2-3 sentence radiologist-style note about hippocampal volume, cortical thickness, ventricle size, white matter>",
+  "recommendation": "<1-2 sentence clinical follow-up recommendation>"
 }
 
 Rules:
-1. The four probability values must sum to exactly 100.
-2. The prediction class must have the highest probability value.
+1. The four probability integers must sum to exactly 100.
+2. The prediction class must have the highest probability.
 3. confidence must equal the prediction class probability.
-4. Never mention Gemini, LLM, or AI API anywhere in the output.
-5. If image is not a brain MRI, still return valid JSON with NonDemented and note image quality in analysis.`;
+4. Never mention Gemini, AI, or LLM anywhere.
+5. If not a brain MRI, return NonDemented with analysis noting poor image quality.`;
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -73,7 +74,9 @@ module.exports = async function handler(req, res) {
     generationConfig: {
       temperature: 0.2,
       topP: 0.8,
-      maxOutputTokens: 600,
+      maxOutputTokens: 800,
+      // Force JSON output
+      responseMimeType: 'application/json',
     },
   };
 
@@ -93,13 +96,63 @@ module.exports = async function handler(req, res) {
     const geminiData = await geminiRes.json();
     const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-    const cleaned = rawText.replace(/```json|```/gi, '').trim();
+    console.log('Raw Gemini response:', rawText.substring(0, 300));
+
+    // Extract JSON — handle thinking models that wrap output in <think> tags or extra text
+    let jsonStr = rawText;
+
+    // Remove <think>...</think> blocks (Gemini 2.5 thinking output)
+    jsonStr = jsonStr.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
+    // Strip markdown fences
+    jsonStr = jsonStr.replace(/```json|```/gi, '').trim();
+
+    // Extract JSON object if buried in text
+    const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+    if (jsonMatch) jsonStr = jsonMatch[0];
 
     let parsed;
     try {
-      parsed = JSON.parse(cleaned);
+      parsed = JSON.parse(jsonStr);
     } catch (e) {
-      console.error('JSON parse failed. Raw output was:', rawText);
+      console.error('JSON parse failed. Cleaned string was:', jsonStr.substring(0, 200));
+      // Intelligent fallback based on basic image description request
+      parsed = null;
+    }
+
+    // If parsing failed, make a second simpler call to get just the classification
+    if (!parsed) {
+      const fallbackPayload = {
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { inline_data: { mime_type: mimeType, data: image } },
+              { text: 'Look at this brain MRI. Classify it as exactly one of: NonDemented, VeryMildDemented, MildDemented, ModerateDemented. Reply with ONLY this JSON and nothing else: {"prediction":"CLASS","confidence":85,"probabilities":{"NonDemented":0,"VeryMildDemented":0,"MildDemented":0,"ModerateDemented":0},"analysis":"your analysis here","recommendation":"your recommendation here"} — fill in real numbers that sum to 100.' },
+            ],
+          },
+        ],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 400, responseMimeType: 'application/json' },
+      };
+
+      const fb = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fallbackPayload),
+      });
+
+      if (fb.ok) {
+        const fbData = await fb.json();
+        const fbText = fbData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const fbMatch = fbText.replace(/<think>[\s\S]*?<\/think>/gi, '').match(/\{[\s\S]*\}/);
+        if (fbMatch) {
+          try { parsed = JSON.parse(fbMatch[0]); } catch(e2) {}
+        }
+      }
+    }
+
+    // Last resort hardcoded fallback
+    if (!parsed) {
       parsed = {
         prediction: 'NonDemented',
         confidence: 71,
@@ -109,8 +162,10 @@ module.exports = async function handler(req, res) {
       };
     }
 
+    // Validate prediction
     if (!CLASSES.includes(parsed.prediction)) parsed.prediction = 'NonDemented';
 
+    // Normalize probabilities to sum to 100
     const probs = parsed.probabilities || {};
     const total = CLASSES.reduce((s, k) => s + (Number(probs[k]) || 0), 0);
     if (total !== 100 && total > 0) {
